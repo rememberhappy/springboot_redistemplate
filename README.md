@@ -1,4 +1,4 @@
-# springboot_redistemplate
+# springboot_redistemplate【spring-boot-starter-data-redis】
 Redis支持五种数据类型：string（字符串），hash（哈希），list（列表），set（集合）及zset(sorted set：有序集合)。
 
 spring-data-redis对jedis进行了封装  
@@ -13,6 +13,10 @@ redisTemplate
     ZSetOperations：zset类型数据操作；  
     HashOperations：针对map类型的数据操作；  
     ListOperations：针对list类型的数据操作；  
+    StreamOperations：Stream是Redis 5.0引入的一种新数据类型，它以更抽象的方式模拟日志数据结构，但日志的本质仍然完好无损  
+    GeoOperations：地理位置信息  
+    HyperLogLogOperations：HyperLogLog是用来做基数统计的算法  
+    ClusterOperations：cluster集群  
 3.提供了对key的“bound”(绑定)便捷化操作API，可以通过bound封装指定的key，然后进行一系列的操作而无须“显式”的再次指定Key，即BoundKeyOperations：  
     BoundValueOperations  
     示例：  
@@ -76,3 +80,16 @@ StringRedisTemplate和RedisTemplate，这两个类是springboot-data-redis对Red
         at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:349) ~[na:1.8.0_181]
         at java.lang.ClassLoader.loadClass(ClassLoader.java:357) ~[na:1.8.0_181]
 	    ... 60 common frames omitted
+
+jedis redisson lettuce redistemplate Stringredistemplate  
+jedis：使用阻塞的I/O，且其方法调用都是同步的，程序流需要等到sockets处理完I/O才能执行，不支持异步。Jedis客户端实例不是线程安全的，所以需要通过连接池来使用Jedis。  
+redisson：基于Netty框架的事件驱动的通信层，其方法调用是异步的。Redisson的API是线程安全的，所以可以操作单个Redisson连接来完成各种操作。  
+lettuce：基于Netty框架的事件驱动的通信层，其方法调用是异步的。Lettuce的API是线程安全的，所以可以操作单个Lettuce连接来完成各种操作。能够支持redis4，需要java8及以上。是基于netty实现的与redis进行同步和异步的通信。
+redistemplate：Spring框架提供了对Lettuce的封装RedisTemplate，它让Spring框架体系可以更方便的操作Redis。
+
+    jedis使直接连接redis server,如果在多线程环境下是非线程安全的，这个时候只有使用连接池，为每个jedis实例增加物理连接；
+    lettuce的连接是基于Netty的，连接实例（StatefulRedisConnection）可以在多个线程间并发访问，StatefulRedisConnection是线程安全的，所以一个连接实例可以满足多线程环境下的并发访问，当然这也是可伸缩的设计，一个连接实例不够的情况也可以按需增加连接实例。
+    Redisson实现了分布式和可扩展的Java数据结构，和Jedis相比，功能较为简单，不支持字符串操作，不支持排序、事务、管道、分区等Redis特性。Redisson的宗旨是促进使用者对Redis的关注分离，从而让使用者能够将精力更集中地放在处理业务逻辑上。
+    优先使用Lettuce，如果需要分布式锁，分布式集合等分布式的高级特性，添加Redisson结合使用，因为Redisson本身对字符串的操作支持很差。
+
+
