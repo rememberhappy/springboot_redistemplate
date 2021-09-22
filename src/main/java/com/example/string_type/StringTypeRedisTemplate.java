@@ -312,14 +312,14 @@ public class StringTypeRedisTemplate {
      */
     @RequestMapping("/muliti")
     public void redisMuliti() {
-        Map valueMap = new HashMap();
+        Map<String, String> valueMap = new HashMap<>();
         valueMap.put("valueMap1", "map1");
         valueMap.put("valueMap2", "map2");
         valueMap.put("valueMap3", "map3");
         redisTemplate.opsForValue().multiSet(valueMap);
 
         //根据List集合取出对应的value值（list中的值是map的key）
-        List paraList = new ArrayList();
+        List<String> paraList = new ArrayList<>();
         paraList.add("valueMap1");
         paraList.add("valueMap2");
         paraList.add("valueMap3");
@@ -330,7 +330,7 @@ public class StringTypeRedisTemplate {
         }
 
         // 判断map是否存在【只要有一个key在，就返回false，不对没有存在的数据做操作】，不存在则设置新值
-        Map valueMap1 = new HashMap();
+        Map<String, String> valueMap1 = new HashMap<>();
         valueMap1.put("valueMap1", "map1");
         valueMap1.put("valueMap2", "map2");
         valueMap1.put("valueMap3", "map3");

@@ -66,6 +66,7 @@ public class RedisTemplateConfig extends CachingConfigurerSupport {
     /**
      * 自定义缓存key的生成策略。默认的生成策略是看不懂的(乱码内容)
      * 通过Spring 的依赖注入特性进行自定义的配置注入并且此类是一个配置类可以更多程度的自定义配置
+     *
      * @return
      */
     @Bean
@@ -90,9 +91,9 @@ public class RedisTemplateConfig extends CachingConfigurerSupport {
      */
     @Bean
     public CacheManager cacheManager(LettuceConnectionFactory factory) {
-        //以锁写入的方式创建RedisCacheWriter对象
+        // 以锁写入的方式创建RedisCacheWriter对象
         RedisCacheWriter writer = RedisCacheWriter.lockingRedisCacheWriter(factory);
-        //创建默认缓存配置对象
+        // 创建默认缓存配置对象
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
         RedisCacheManager cacheManager = new RedisCacheManager(writer, config);
         return cacheManager;
