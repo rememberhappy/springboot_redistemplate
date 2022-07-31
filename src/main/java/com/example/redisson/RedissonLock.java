@@ -1,4 +1,4 @@
-package com.example.lock;
+package com.example.redisson;
 
 import org.redisson.api.RLock;
 import org.redisson.api.RReadWriteLock;
@@ -14,23 +14,23 @@ import java.util.concurrent.TimeUnit;
 /**
  * redisson分布式锁
  * 1. 互斥
- *      在分布式高并发的条件下，我们最需要保证，同一时刻只能有一个线程获得锁，这是最基本的一点。
+ * 在分布式高并发的条件下，我们最需要保证，同一时刻只能有一个线程获得锁，这是最基本的一点。
  * 2. 防止死锁
- *      在分布式高并发的条件下，比如有个线程获得锁的同时，还没有来得及去释放锁，就因为系统故障或者其它原因使它无法执行释放锁的命令,导致其它线程都无法获得锁，造成死锁。
- *      所以分布式非常有必要设置锁的 有效时间 ，确保系统出现故障后，在一定时间内能够主动去释放锁，避免造成死锁的情况。
+ * 在分布式高并发的条件下，比如有个线程获得锁的同时，还没有来得及去释放锁，就因为系统故障或者其它原因使它无法执行释放锁的命令,导致其它线程都无法获得锁，造成死锁。
+ * 所以分布式非常有必要设置锁的 有效时间 ，确保系统出现故障后，在一定时间内能够主动去释放锁，避免造成死锁的情况。
  * 3. 性能
- *      对于访问量大的共享资源，需要考虑减少锁等待的时间，避免导致大量线程阻塞。
- *      锁的颗粒度要尽量小。比如你要通过锁来减库存，那这个锁的名称你可以设置成是商品的ID,而不是任取名称。这样这个锁只对当前商品有效,锁的颗粒度小。
- *      锁的范围尽量要小 。比如只要锁2行代码就可以解决问题的，那就不要去锁10行代码了。
+ * 对于访问量大的共享资源，需要考虑减少锁等待的时间，避免导致大量线程阻塞。
+ * 锁的颗粒度要尽量小。比如你要通过锁来减库存，那这个锁的名称你可以设置成是商品的ID,而不是任取名称。这样这个锁只对当前商品有效,锁的颗粒度小。
+ * 锁的范围尽量要小 。比如只要锁2行代码就可以解决问题的，那就不要去锁10行代码了。
  * 4. 重入
- *      同一个线程可以重复拿到同一个资源的锁。重入锁非常有利于资源的高效利用。
+ * 同一个线程可以重复拿到同一个资源的锁。重入锁非常有利于资源的高效利用。
  * tryLock(),lock()
  *
  * @Author zhangdj
  * @Date 2021/6/10:15:51
  */
 public class RedissonLock {
-    private static Logger log = LoggerFactory.getLogger("RedissonLock");
+    private static final Logger log = LoggerFactory.getLogger("RedissonLock");
     @Autowired
     private RedissonClient redissonClient;
 
@@ -57,6 +57,7 @@ public class RedissonLock {
             log.info("useTheLock finish");
         }
     }
+
     public void useTheTryLockTime() {
         RLock lock = redissonClient.getLock("ScheduledTask.awardCertificateWithRuningTrain");
         try {
@@ -65,7 +66,7 @@ public class RedissonLock {
              * 尝试加锁，最多等待100秒，上锁以后10秒自动解锁。加锁成功后返回true
              * Redisson 提供了可以指定leaseTime参数的加锁方法来指定加锁的时间。超过这个时间后锁便自动解开了，不会延长锁的有效期。
              */
-            if (lock.tryLock(100,10, TimeUnit.SECONDS)) {
+            if (lock.tryLock(100, 10, TimeUnit.SECONDS)) {
                 log.info("useTheLock 获取锁成功");
                 // TODO: 2021/6/10  业务处理
             } else {
@@ -81,6 +82,7 @@ public class RedissonLock {
             log.info("useTheLock finish");
         }
     }
+
     public void useTheLock() {
         RLock lock = redissonClient.getLock("ScheduledTask.awardCertificateWithRuningTrain");
         // 如果锁不可用，那么当前的线程就会被禁用，在获得锁之前处于休眠状态。
@@ -101,13 +103,13 @@ public class RedissonLock {
             log.info("useTheLock finish");
         }
     }
+
     /**
-     *
      * 1. Redisson提供的分布式锁是支持锁自动续期的，也就是说，如果线程仍旧没有执行完，
      * 那么redisson会自动给redis中的目标key延长超时时间，这在Redisson中称之为 Watch Dog 机制
      * 2. 如果负责储存这个分布式锁的Redis节点宕机以后，而且这个锁正好处于锁住的状态时，这个锁会出现锁死的状态。在Redisson实例被关闭前，
      * Watch Dog不断的延长锁的有效期。为了解决这个问题 程序释放锁操作一定要放到 finally {} 中
-     *
+     * <p>
      * 为了避免这两种情况的发生，Redisson内部提供了一个【监控锁的看门狗】，它的作用是在Redisson实例被关闭前，
      * 不断的延长锁的有效期。默认情况下，看门狗的检查锁的超时时间是30秒钟，也可以通过修改Config.lockWatchdogTimeout来另行指定。
      * watch dog 在当前节点存活时每 10s 给分布式锁的key续期到 30s；
@@ -163,7 +165,7 @@ public class RedissonLock {
      */
     public void useTheFairLock() {
         RLock lock = redissonClient.getFairLock("anyLock");
-        // 如果锁不可用，那么当前的线程就会被禁用，在获得锁之前处于休眠状态。
+        // 如果锁不可用，那么当前的线程就会被阻塞，在获得锁之前处于休眠状态。
         lock.lock();
         /**
          * lock(long leaseTime, TimeUnit unit)

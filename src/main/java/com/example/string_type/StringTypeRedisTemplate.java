@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 @RequestMapping("/stringtest")
 public class StringTypeRedisTemplate {
     @Autowired
-    RedisTemplate redisTemplate;
+    RedisTemplate<String, String> redisTemplate;
     /*
     1. 建议使用泛型此种方式，在使用中就不会涉及到类型的强制转换。
     2. 指定泛型的时候使用@Resource注解。【当配置了redisConfig后，什么注解都能使用】
@@ -74,12 +74,12 @@ public class StringTypeRedisTemplate {
         redisTemplate.boundValueOps("StringKey2").set("StringValue", 1, TimeUnit.MINUTES);
 
         //2、通过BoundValueOperations设置值， boundValueOps：操作字符串类型的数据
-        BoundValueOperations stringKey = redisTemplate.boundValueOps("StringKey3");
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey3");
         stringKey.set("StringVaule1");// 此处的值会被后面的替换
         stringKey.set("StringValue2", 1, TimeUnit.MINUTES);
 
         //3、通过ValueOperations设置值， opsForValue：操作字符串类型的数据
-        ValueOperations ops = redisTemplate.opsForValue();
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
         ops.set("StringKey4", "StringVaule");
         ops.set("StringValue5", "StringVaule", 1, TimeUnit.MINUTES);
 
@@ -105,7 +105,7 @@ public class StringTypeRedisTemplate {
     @RequestMapping("/get")
     public void redisGet() {
         //1、通过redisTemplate设置值
-        String str1 = (String) redisTemplate.boundValueOps("StringKey1").get();
+        String str1 = redisTemplate.boundValueOps("StringKey1").get();
         String s1 = redisTemplateString.boundValueOps("StringKey1_1").get();
         Student student1 = redisTemplateStudent.boundValueOps("StringKey1_student").get();
         System.out.println(str1 + "," + s1 + "," + student1.toString());
@@ -113,14 +113,14 @@ public class StringTypeRedisTemplate {
         System.out.println(stringKey1_student);
 
         //2、通过BoundValueOperations获取值
-        BoundValueOperations stringKey = redisTemplate.boundValueOps("StringKey");
-        String str2 = (String) stringKey.get();
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey");
+        String str2 = stringKey.get();
         BoundValueOperations<String, String> stringKey1 = redisTemplateString.boundValueOps("StringKey");
         String s2 = stringKey1.get();
 
         //3、通过ValueOperations获取值
-        ValueOperations ops = redisTemplate.opsForValue();
-        String str3 = (String) ops.get("StringKey");
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+        String str3 = ops.get("StringKey");
         ValueOperations<String, String> ops1 = redisTemplateString.opsForValue();
         String s3 = ops1.get("StringKey");
     }
@@ -162,9 +162,9 @@ public class StringTypeRedisTemplate {
      * @date 2021/5/20 12:08
      */
     public void redisGetAndSet() {
-        String oldAndNewStringValue = (String) redisTemplate.opsForValue().getAndSet("stringValue1", "ccc");
+        String oldAndNewStringValue = redisTemplate.opsForValue().getAndSet("stringValue1", "ccc");
         System.out.print("通过getAndSet(K key, V value)方法获取原来的" + oldAndNewStringValue + ",");
-        String newStringValue = (String) redisTemplate.opsForValue().get("stringValue");
+        String newStringValue = redisTemplate.opsForValue().get("stringValue");
         System.out.println("修改过后的值:" + newStringValue);
     }
 
@@ -239,7 +239,7 @@ public class StringTypeRedisTemplate {
      * increment(K key, Long dalta)顺序递增/递减，第二个参数为Long类型，正数则递增，负数则递减。返回递增/递减后的值
      * increment(K key, double delta)
      * value是数字类型，字符串类型没法增一
-     * 有redisTemplate和stringRedisTemplate两种模板，redisTemplate模板使用时应为默认使用了JDK的序列化会在递增/低贱的过程中出现问题，stringRedisTemplate不会
+     * 有redisTemplate和stringRedisTemplate两种模板，redisTemplate模板使用时应为默认使用了JDK的序列化会在递增/递减的过程中出现问题，stringRedisTemplate不会
      *
      * @param
      * @return void
@@ -249,7 +249,7 @@ public class StringTypeRedisTemplate {
      */
     @RequestMapping("/increment")
     public void redisCounter() {
-        BoundValueOperations stringKey = redisTemplate.boundValueOps("StringKey");
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey");
         Object beforeValue = stringKey.get();
 //        stringKey.increment(3L);// 异常（第一次可以，进行初始化，第二次增加的时候就会出错），java.io.EOFException: null
         Long stringKey1 = incr("StringKey", 3L);// 返回递增/递减后的值
@@ -291,10 +291,10 @@ public class StringTypeRedisTemplate {
      */
     public void redisSetGetBit() {
         redisTemplate.opsForValue().setBit("stringValue", 1, false);
-        String newStringValue = (String) redisTemplate.opsForValue().get("stringValue1");
+        String newStringValue = redisTemplate.opsForValue().get("stringValue1");
         System.out.println("通过setBit(K key,long offset,boolean value)方法修改过后的值:" + newStringValue);
 
-        boolean bitBoolean = redisTemplate.opsForValue().getBit("stringValue1", 1);
+        Boolean bitBoolean = redisTemplate.opsForValue().getBit("stringValue1", 1);
         System.out.println("通过getBit(K key,long offset)方法判断指定bit位的值是:" + bitBoolean);
     }
 

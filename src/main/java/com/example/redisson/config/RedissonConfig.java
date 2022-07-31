@@ -1,4 +1,4 @@
-package com.example.config;
+package com.example.redisson.config;
 
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.Redisson;

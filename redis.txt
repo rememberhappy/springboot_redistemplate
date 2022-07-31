@@ -1,0 +1,24 @@
+mdcontent: "# 一、redis常用场景？↵redis常用场景也是基于他的支持的数据类型有密切相关的。↵## 1.String数据类型：↵A.通过String类型指令设置过期时间时间做限时任务比如常用的短信验证码。↵B.用户的登陆时效，比如30分钟掉线↵C.缓存（做缓存时需要考虑缓存击穿、穿透、雪崩的等问题）↵D.分布式锁（也是基于String+lua脚本）↵## 2.set数据类型：↵A.抽奖↵B.共同的好友（主要是多个set求交集，set不仅仅只能做交集，还能做并集等等）↵C.标签↵D.元素去重↵## 3.zset数据类型：↵可以在业务中用于排序和去重。↵## 4.hash数据类型：↵A.统计场景比如文章的浏览量，收藏量、点赞量等等。↵B.hash可以做分布式可重入锁。↵## 5.bitMap数据类型：↵做布隆过滤器，做用于黑名单，解决缓存击穿等（布隆过滤器判断存在误差，存在的不一定存在，不存在的一定不存在）↵↵↵↵# 二、Redis为什么可以做分布式锁？↵锁主要是为了解决多个线程之间共享资源安全问题。↵锁有单机锁和分布式锁。↵单机锁，只在本分服务上能够认可，在其他服务上不被认可，随着业务的发展慢慢分布式架构诞生，以往的单机锁不满足各个服务之间存在公共资源安全问题了，于是诞生了分布式锁。↵分布式锁主要解决各个服务公共资源安全问题的。↵↵1.Redis为单进程单线程模式，采用队列模式将并发访问变成串行访问，且多客户端对Redis的连接并不存在竞争关系。↵2.Redis的SETNX命令可以方便的实现分布式锁 但是不太推荐因为没有过期时间，可能存在死锁问题。↵↵# 三.redis的特性↵特性1：快↵特性2：redis是基于内存。↵特性3：redis执行命令是单线程操作，单线程不存在数据完全问题。↵特性4：redis是k v数据性数据库。↵特性5：网络模型是多路复用。↵↵四、redis什么快？↵1.redis是基于内存，不存在磁盘io。↵2.redis时间单线程，单线程不存在cpu上下文切换。上下文切换比较消耗时间与性能。↵3.redis的协议简单（RESP协议）。"
+
+
+
+mdcontent: "keys * 生产上不建议用，因为redis是单线程查询，数据量太大会特别慢，用啥方法解决？忘了↵↵kps?每秒的查询数↵↵同时10w个请求去调用接口，缓存击穿↵↵redis做分布式锁↵1.redis的指令执行是单线程的，不会出现同事有两个人拿到无锁的标记↵2.kv接口，通过key来判断是否可以拿到锁↵↵lua脚本，保证多个指令的原子性↵↵可重入锁：同一个线程，能获取锁多次，减少死锁问题↵hash结构来解决可重入锁↵hash  key field value↵↵↵作业：↵redis为啥可以做分布式锁？↵1.锁用来保证一组操作的原子性，分布式锁用来解决多个集群的业务系统中某个接口的原子性，↵2.redis中的String类型通过kv的结构，来判断是否可以获取锁，↵3.redis的指令执行是单线程的↵4.可以通过lua脚本保证多个指令的原子性"
+
+
+
+mdcontent: "特征：↵1.纯内存操作，不需要与磁盘交互。↵2.指令执行的时候是单线程的，基于内存操作时，单线程操作速度比线程切换速度快。↵3.数据是K、V结构 ↵4.网络模型，多路复用↵↵其他特征↵1.提供持久化方案↵2.内存管理机制：过期机制、淘汰机制↵3.集群方案：主从、sentinel、cluster↵↵应用场景：↵1.缓存：查缓存，没有值时查db，然后塞到缓存中。防止高并发导致缓存击穿，加锁（DCL double check lock）↵![image.png](https://gp-www-cdn.oss-cn-shenzhen.aliyuncs.com/gupao-edu-admin/manage/permanent/2022-7/B30B9792-ABDE-4F23-AD96-EAF417F6FDE8.png)↵↵2.分布式锁：↵2.1 只能有1个线程来执行相关代码↵2.2 必须有一个标记，且标记必须可见↵2.3 标记必须是安全的↵lua脚本：多个命令在同一个线程执行，保证原子性↵"
+
+
+
+mdcontent: "mysql超过500g效率不高↵↵↵redis为什么快↵1、纯内存操作，每次操作数据不需要跟磁盘进行交互 单次操作会很快↵↵2、命令执行的时候 是单线程的 基于内存操作的，单个操作的速度比线程切换的速度快↵↵3、数据 K、v结构 键值对  但是底层sds、跳跃表（空间换时间）的数据结构↵↵4、网络模型  多路复用↵↵↵↵其他特性:     高可用↵↵1、持久化的方案↵↵2、内存管理的机制 过期机制、淘汰机制↵↵3、集群的方案 主从 、sentinel、cluster↵↵↵redis的应用场景↵↵单个指令如果速度过慢 应该要优化↵↵String↵性能 解决了mysql慢的问题  缓存↵↵缓存↵↵读取数据的时候，优先去redis拿，如果没有的话，再去db拿，拿了后放回redis就好↵↵请求只会去访问一次mysql↵↵大公司 10ms之内↵↵↵大并发场景  10w个请求同时过来  同时打到db--缓存击穿↵↵↵↵解决：10w个请求，我只需要一个打到db↵↵↵加锁 保证了10w个请求不是并发打过去的  而是串行打过去的 ↵↵单例模式 懒汉式 DCL 保证只会创建一个对象↵↵DCL双重锁↵↵↵↵↵↵分布式锁： redis zk mysql↵↵单机锁：synchronize lock  支队当前服务生效↵↵订单服务 机器1 机器2↵↵↵锁：原来并行的东西 或者说只能串行的东西 让它串行  不能有并行 同时只能有一个线程去做↵↵假如让你设计一把锁，你会怎么做？↵↵1、只能有一个线程来执行我的相关代码，必须有个标记，代表有人在做这件事情↵↵2、这个标记有点要求：1、可见  这个标记可见  lock  state标记  volatile  （state voatile 必须一起 让其他可见）↵↵3、这个标记必须是安全的 不能出现同时有2个人拿到这个无锁的标记    lock  通过 cas来实现↵↵分布式锁↵为什么redis能做分布式锁？↵↵key   value 结构 加入说我来执行 判断这个标记存不存在 如果不存在 代表拿到锁，并且set一下这个key↵↵redis的指令执行都是单线程的，所以不会出现同时有2个人拿到锁的情况↵↵↵大概流程：↵↵↵↵lua脚本：保证多个指令的原子性↵eval“redis.call”↵↵↵可重入锁: 同一个线程 能获取锁多次 减少死锁的↵↵有可能同一个线程对同一个锁多次加锁，可能会有死锁问题↵↵↵↵Hash↵Key  filed value 不要做购物车↵↵redis  cap ap模型 优先保证高可用的 会有数据丢失↵↵存储结构性数据 统计数据  ↵↵商品 浏览数 订单数 评论数 ↵↵表 static ↵↵分布式的重入锁   ↵↵redssion  lua+hash↵↵↵可重入锁: 同一个线程 能获取锁多次 减少死锁的↵↵重入锁的必要条件： ↵↵1、必须要有个互斥的大key  key↵↵2、必须有地方存储线程信息  filed↵↵3、重入锁的次数         value↵↵时间轮↵↵↵Set↵无序的集合  不能重复  存储的时候是无序 但是下次获取的时候是一样的  （int除外）↵spop↵smembers ↵↵抽奖 ↵↵↵Zset↵"
+
+
+https://together.blog.csdn.net/article/details/105678126
+https://together.blog.csdn.net/article/details/104835959?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-104835959-blog-108256553.pc_relevant_default&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-104835959-blog-108256553.pc_relevant_default&utm_relevant_index=2
+https://blog.51cto.com/u_15281317/2942401
+https://blog.51cto.com/u_15127679/4527581
+https://cloud.tencent.com/developer/article/1876153
+https://blog.csdn.net/lydms/article/details/105224210?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-105224210-blog-124054738.pc_relevant_multi_platform_whitelistv3&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-105224210-blog-124054738.pc_relevant_multi_platform_whitelistv3&utm_relevant_index=1
+https://blog.csdn.net/weixin_42001592/article/details/124054738
+https://blog.csdn.net/weixin_43944305/article/details/124322595
+https://www.runoob.com/redis/strings-setnx.html

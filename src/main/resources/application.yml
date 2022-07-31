@@ -1,0 +1,15 @@
+spring:
+  redis:
+    jedis:
+      pool:
+        maxActive: 5000				#最大连接数量
+        maxIdle: 30					#最大闲置数量
+        minIdle: 5					#最小闲置数量
+        max-wait: 2000				#从连接池中获取连接的最大等待时间
+    lettuce:
+      pool:
+        maxActive: 5000					#最大连接数
+        maxIdle: 30						#连接池最大空闲连接数.
+        minIdle: 5						#连接池最小空闲连接数.
+        max-wait: 2000					#从连接池中获取连接时的最大等待时间
+        time-between-eviction-runs: 60s	#空闲对象逐出器线程的运行间隔时间.空闲连接线程释放周期时间.

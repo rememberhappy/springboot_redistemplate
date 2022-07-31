@@ -1,6 +1,5 @@
 package com.example.hash_type;
 
-import com.example.domain.Student;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.*;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +17,7 @@ import java.util.concurrent.TimeUnit;
  * Redis hash 是一个 string 类型的 field（字段） 和 value（值） 的映射表，hash 特别适合用于存储对象。
  * Redis 中每个 hash 可以存储 232 - 1 键值对（40多亿）。
  * 使用hash 省内存。在hash类型中，一个key可以对应多个多个field，一个field对应一个value。将一个对象存储为hash类型的好处之一：
+ * key可以设置过期时间，field不可以设置过期时间
  * 较于每个字段都单独存储成string类型来说，更能节约内存。
  */
 @RestController
