@@ -19,7 +19,7 @@ Redis支持五种数据类型：string（字符串），hash（哈希），list�
       是线程安全的，所以一个连接实例（StatefulRedisConnection）就可以满足多线程环境下的并发访问， 当然这个也是可伸缩的设计，一个连接实例不够的情况也可以按需增加连接实例。
     + 用于线程安全同步，异步和响应使用，支持集群，Sentinel，管道和编码器。
     + 基于Netty框架的事件驱动的通信层，其方法调用是异步的。
-    + Lettuce 当多线程使用同一连接实例时，是线程安全的，所以可以操作单个Lettuce连接来完成各种操作。
+    + Lettuce 当多线程使用同一连接实例时，是线程安全的，所以可以操作单个Lettuce连接来完成各种操作。  
 *注意*：优先使用Lettuce，如果需要分布式锁，分布式集合等分布式的高级特性，添加Redisson结合使用，因为Redisson本身对字符串的操作支持很差。
 
 ## 2. RedisTemplate 基础认识
@@ -64,7 +64,7 @@ RedisTemplate 是基于某个具体实现的再封装，比如说 springBoot1.x 
 5. 将事务封装，由容器进行控制
 6. 针对数据的“序列化/反序列化”，提供了多种可选择序列化策略(RedisSerializer)
     + *JdkSerializationRedisSerializer*：RedisTemplate默认使用。POJO对象的存取场景，使用JDK本身序列化机制，将pojo类通过ObjectInputStream/ObjectOutputStream进行序列化操作，最终redis-server中将存储字节序列。是目前最常用的序列化策略。
-   ![src/mian/resources/image/默认JDK序列化方式的存储结果.png](img.png)
+   ![https://github.com/rememberhappy/springboot_redistemplate/blob/main/src/main/resources/image/%E9%BB%98%E8%AE%A4JDK%E5%BA%8F%E5%88%97%E5%8C%96%E6%96%B9%E5%BC%8F%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%9C.png](img.png)
        + 缺点：可读性差；内存占用较大
     + *StringRedisSerializer*：Key或者value为字符串的场景，根据指定的charset对数据的字节序列编码成string，是“new String(bytes, charset)”和“string.getBytes(charset)”的直接封装。是最轻量级和高效的策略。
     + *JacksonJsonRedisSerializer*：jackson-json工具提供了javabean与json之间的转换能力，可以将pojo实例序列化成json格式存储在redis中，也可以将json格式的数据转换成pojo实例。因为jackson工具在序列化和反序列化时，需要明确指定Class类型，因此此策略封装起来稍微复杂。【需要jackson-mapper-asl工具支持】
