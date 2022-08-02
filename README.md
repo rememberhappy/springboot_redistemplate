@@ -64,7 +64,7 @@ RedisTemplate 是基于某个具体实现的再封装，比如说 springBoot1.x 
 5. 将事务封装，由容器进行控制
 6. 针对数据的“序列化/反序列化”，提供了多种可选择序列化策略(RedisSerializer)
     + *JdkSerializationRedisSerializer*：RedisTemplate默认使用。POJO对象的存取场景，使用JDK本身序列化机制，将pojo类通过ObjectInputStream/ObjectOutputStream进行序列化操作，最终redis-server中将存储字节序列。是目前最常用的序列化策略。
-   ![https://github.com/rememberhappy/springboot_redistemplate/blob/main/src/main/resources/image/%E9%BB%98%E8%AE%A4JDK%E5%BA%8F%E5%88%97%E5%8C%96%E6%96%B9%E5%BC%8F%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%9C.png](img.png)
+    ![Image text](https://github.com/rememberhappy/springboot_redistemplate/blob/main/src/main/resources/image/%E9%BB%98%E8%AE%A4JDK%E5%BA%8F%E5%88%97%E5%8C%96%E6%96%B9%E5%BC%8F%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%9C.png)
        + 缺点：可读性差；内存占用较大
     + *StringRedisSerializer*：Key或者value为字符串的场景，根据指定的charset对数据的字节序列编码成string，是“new String(bytes, charset)”和“string.getBytes(charset)”的直接封装。是最轻量级和高效的策略。
     + *JacksonJsonRedisSerializer*：jackson-json工具提供了javabean与json之间的转换能力，可以将pojo实例序列化成json格式存储在redis中，也可以将json格式的数据转换成pojo实例。因为jackson工具在序列化和反序列化时，需要明确指定Class类型，因此此策略封装起来稍微复杂。【需要jackson-mapper-asl工具支持】
