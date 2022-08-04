@@ -5,13 +5,11 @@ import com.example.domain.Student;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -28,16 +26,6 @@ public class ReImpl {
 
     @Resource
     private StudentDao studentDao;
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
-
-    public static final String REDIS_CUSTOMERS_ONE = "Customers";
-
-    public static final String REDIS_CUSTOMERS_ALL = "allList";
-
-    // =====================================================================使用Spring cahce 注解方式实现缓存
-    // ==================================单个操作
-
 
     @Cacheable(value = "cache:customer", unless = "null == #result", key = "#id")
     public Student cacheOne(Integer id) {
@@ -73,15 +61,11 @@ public class ReImpl {
         return byId.orElse(null);
     }
 
-
-    // ==================================删除缓存
-
     @CacheEvict(value = "cache:customer", key = "'cacheOne5' + '.' + #id")
     public Object del(Integer id) {
         // 删除缓存后的逻辑
         return null;
     }
-
 
     @CacheEvict(value = "cache:customer", allEntries = true)
     public void del() {
@@ -92,8 +76,6 @@ public class ReImpl {
     public void delall() {
 
     }
-    // ==================List操作
-
 
     @Cacheable(value = "cache:all")
     public List<Student> cacheList() {
@@ -102,7 +84,6 @@ public class ReImpl {
     }
 
     // todo 先查询缓存，再校验是否一致，然后更新操作，比较实用，要清楚缓存的数据格式（明确业务和缓存模型数据）
-
     @CachePut(value = "cache:all", unless = "null == #result", key = "#root.methodName")
     public List<Student> cacheList2() {
         List<Student> all = studentDao.findAll();

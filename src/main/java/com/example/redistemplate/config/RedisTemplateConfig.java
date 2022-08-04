@@ -161,8 +161,9 @@ public class RedisTemplateConfig extends CachingConfigurerSupport {
     /**
      * 基于注解的 缓存设置会用到此设置
      * 配置自定义 缓存管理器
-     * 当我们引入redis后，缓存管理器就有默认的 ConcurrentMapCacheManager 变成 RedisCacheManager，序列化方式会变成默认的jdk。
-     * 缓存管理器针对@Cacheable这种缓存注解起作用时，会自动的对数据进行存储，而不是手动通过redistemplate进行存储，这样使用的还是jdk序列化机制，
+     * 当我们引入redis后，缓存管理器就由默认的 ConcurrentMapCacheManager 变成 RedisCacheManager 来进行管理了。
+     * 我们在使用 RedisCacheManager 来操作 redis 时，底层操作默认使用的是 RedisTemplate，而 redisTemplate 是 redisAutoConfiguration 在项目启动时帮我们自动注册的组件，它默认使用的是 JDK 序列化机制。
+     * 缓存管理器针对 @Cacheable 这种缓存注解起作用时，会自动的对数据进行存储，而不是手动通过 Redistemplate 进行存储，这样使用的还是jdk序列化机制，所以需要进行重写
      */
     @Bean
     public CacheManager cacheManager(LettuceConnectionFactory factory) {
@@ -182,7 +183,7 @@ public class RedisTemplateConfig extends CachingConfigurerSupport {
                 .fromSerializer(jackson2JsonRedisSerializer);
         // 设置缓存配置格式
         RedisCacheConfiguration cacheCfg = RedisCacheConfiguration.defaultCacheConfig()
-//                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
                 .serializeValuesWith(pair)
                 .entryTtl(Duration.ofSeconds(600))
                 .disableCachingNullValues();
