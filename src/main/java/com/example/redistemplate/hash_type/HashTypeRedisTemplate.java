@@ -1,4 +1,4 @@
-package com.example.hash_type;
+package com.example.redistemplate.hash_type;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.*;

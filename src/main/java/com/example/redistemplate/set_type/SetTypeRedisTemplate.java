@@ -1,4 +1,4 @@
-package com.example.set_type;
+package com.example.redistemplate.set_type;
 
 import com.example.domain.Student;
 import org.springframework.beans.factory.annotation.Autowired;

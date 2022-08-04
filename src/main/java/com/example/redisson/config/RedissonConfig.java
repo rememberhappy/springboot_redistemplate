@@ -28,14 +28,21 @@ public class RedissonConfig {
 
     @Bean
     public RedissonClient redissonClient() {
-        String url = String.format("redis://%s:%d", this.host, this.port);
         Config config = new Config();
+        String url = String.format("redis://%s:%d", this.host, this.port);
         if (StringUtils.isNotEmpty(this.password)) {
             config.useSingleServer().setAddress(url).setDatabase(this.database).setPassword(this.password);
         } else {
             config.useSingleServer().setAddress(url).setDatabase(this.database);
         }
-        RedissonClient redissonClient = Redisson.create(config);
-        return redissonClient;
+        // 第二种方式：可以设置 Redisson 单独的配置文件，通过加载这个文件来对 Redisson 进行初始化配置。如果是JSON，则需要通过 Config.fromJSON();
+        // config = Config.fromYAML(RedissonConfig.class.getClassLoader().getResource("redisson-production.yml"));
+        // 第三种方式：在 yml 中配置
+        /*spring:
+          redis:
+            redisson:
+              config: classpath:redisson-config.yaml*/
+        // 第一种方式
+        return Redisson.create(config);
     }
 }

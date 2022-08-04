@@ -1,37 +1,57 @@
-package com.example.zset_type;
+package com.example.redistemplate.string_type;
 
 import com.example.domain.Student;
-import org.redisson.api.RFuture;
-import org.redisson.api.RScoredSortedSet;
-import org.redisson.api.RedissonClient;
-import org.redisson.client.protocol.ScoredEntry;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.core.BoundValueOperations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @Author zhangdj
- * @Date 2021/5/20:17:20
- * @Description redis中操作有序集合类型【zset】的数据
- * Redis 有序集合和无序集合一样也是string类型元素的集合,且不允许重复的成员。
- * 不同的是每个元素都会关联一个double类型的分数。redis正是通过分数来为集合中的成员进行从小到大的排序。
- * 有序集合的成员是唯一的,但分数(score)却可以重复。
- * public interface ZSetOperations<K,V>
+ * @Date 2021/5/19:14:42
+ * @Description redis中操作字符串类型【String】的数据
  */
-public class ZsetTypeRedisTemplate {
-
+@RestController
+@RequestMapping("/stringtest")
+public class StringTypeRedisTemplate {
     @Autowired
-    RedisTemplate redisTemplate;
+    RedisTemplate<String, String> redisTemplate;
+    /**
+    1. 建议使用泛型此种方式，在使用中就不会涉及到类型的强制转换。
+    2. 指定泛型的时候使用@Resource注解。【当配置了redisConfig后，什么注解都能使用】
+    @Autowired 默认按照类型装配的。也就是说，想要获取RedisTemplate< String, Object>的Bean，要根据名字装配。那么自然想到使用@Resource，它默认按照名字装配
+     */
+    @Resource
+    RedisTemplate<String, String> redisTemplateString;
+    /**
+    redis 自动导入时，泛型只能有两种
+        1：RedisTemplate<Object, Object>
+        2：StringRedisTemplate extends RedisTemplate<String, String>
+    如果项目中使用的泛型不是这两种，可以在导入的时候不指明泛型，否则自动导入会报错:
+        Description:
+        A component required a bean of type 'org.springframework.data.redis.core.RedisTemplate' that could not be found.
+        Action:
+        Consider defining a bean of type 'org.springframework.data.redis.core.RedisTemplate' in your configuration.
+    可以改为不使用泛型的redisTemplate或者是重新配置【如果针对自动配置类型添加自己的Bean，它将取代默认的】
+     */
+    @Resource
+    RedisTemplate<String, Student> redisTemplateStudent;
 
     /**
      * 操作redis中的字符串类型的数据的三种方式
-     * add(K key, V value1,V value1...)新增一个无序集合类型的值,key是键，value是值。
+     * set(K key, V value)新增一个字符串类型的值,key是键，value是值。
+     * set(K key, V value, long timeout, TimeUnit unit)在新增数据得同时设置变量值的过期时间。
+     * set(K key, V value, long offset)覆盖从指定位置开始的值。
      *
      * @param
      * @return void
@@ -40,16 +60,35 @@ public class ZsetTypeRedisTemplate {
      * @date 2021/5/19 15:40
      */
     @RequestMapping("/findvalue")
-    public void redisTemplateTest() {//1、通过redisTemplate设置值
-        redisTemplate.boundZSetOps("zSetKey").add("zSetVaule", 100D);
+    public String redisTemplateTest() {
+        //1、通过redisTemplate设置值，boundValueOps：操作字符串类型的数据
+        redisTemplate.boundValueOps("StringKey1").set("StringValue");
+        redisTemplateString.opsForValue().set("StringKey1_1", "StringValue1_1");
+        Student student = new Student();
+        student.setId(1l);
+        student.setName("张三");
+        student.setAddress("北京");
+        student.setAge(18);
+        student.setClassname("五年级");
+        redisTemplateStudent.opsForValue().set("StringKey1_student", student);
+        redisTemplate.boundValueOps("StringKey2").set("StringValue", 1, TimeUnit.MINUTES);
 
-        //2、通过BoundValueOperations设置值
-        BoundZSetOperations zSetKey = redisTemplate.boundZSetOps("zSetKey");
-        zSetKey.add("zSetVaule", 100D);
+        //2、通过BoundValueOperations设置值， boundValueOps：操作字符串类型的数据
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey3");
+        stringKey.set("StringVaule1");// 此处的值会被后面的替换
+        stringKey.set("StringValue2", 1, TimeUnit.MINUTES);
 
-        //3、通过ValueOperations设置值
-        ZSetOperations zSetOps = redisTemplate.opsForZSet();
-        zSetOps.add("zSetKey", "zSetVaule", 100D);
+        //3、通过ValueOperations设置值， opsForValue：操作字符串类型的数据
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+        ops.set("StringKey4", "StringVaule");
+        ops.set("StringValue5", "StringVaule", 1, TimeUnit.MINUTES);
+
+        // 覆盖从指定位置开始的值
+        redisTemplate.opsForValue().set("absentValue", "aaaaaaaaa");
+        redisTemplate.opsForValue().set("absentValue", "dd", 2);// 将aaaaaaaaa值替换成了"a"dd"aaaa"从第二位开始，替换的长度是四个，被替换的字符串中2，3，4，5位就是替换的字符串
+        String overrideString = redisTemplate.opsForValue().get("absentValue") + "";// 查到的值是：a，这个有点问题
+        System.out.println("通过set(K key, V value, long offset)方法覆盖部分的值:" + overrideString);
+        return "index";
     }
 
     /**
@@ -66,15 +105,24 @@ public class ZsetTypeRedisTemplate {
     @RequestMapping("/get")
     public void redisGet() {
         //1、通过redisTemplate设置值
-        String str1 = (String) redisTemplate.boundValueOps("StringKey1").get();
+        String str1 = redisTemplate.boundValueOps("StringKey1").get();
+        String s1 = redisTemplateString.boundValueOps("StringKey1_1").get();
+        Student student1 = redisTemplateStudent.boundValueOps("StringKey1_student").get();
+        System.out.println(str1 + "," + s1 + "," + student1.toString());
+        String stringKey1_student = redisTemplateString.boundValueOps("StringKey1_student").get();
+        System.out.println(stringKey1_student);
 
         //2、通过BoundValueOperations获取值
-        BoundValueOperations stringKey = redisTemplate.boundValueOps("StringKey");
-        String str2 = (String) stringKey.get();
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey");
+        String str2 = stringKey.get();
+        BoundValueOperations<String, String> stringKey1 = redisTemplateString.boundValueOps("StringKey");
+        String s2 = stringKey1.get();
 
         //3、通过ValueOperations获取值
-        ValueOperations ops = redisTemplate.opsForValue();
-        String str3 = (String) ops.get("StringKey");
+        ValueOperations<String, String> ops = redisTemplate.opsForValue();
+        String str3 = ops.get("StringKey");
+        ValueOperations<String, String> ops1 = redisTemplateString.opsForValue();
+        String s3 = ops1.get("StringKey");
     }
 
     /**
@@ -114,9 +162,9 @@ public class ZsetTypeRedisTemplate {
      * @date 2021/5/20 12:08
      */
     public void redisGetAndSet() {
-        String oldAndNewStringValue = (String) redisTemplate.opsForValue().getAndSet("stringValue1", "ccc");
+        String oldAndNewStringValue = redisTemplate.opsForValue().getAndSet("stringValue1", "ccc");
         System.out.print("通过getAndSet(K key, V value)方法获取原来的" + oldAndNewStringValue + ",");
-        String newStringValue = (String) redisTemplate.opsForValue().get("stringValue");
+        String newStringValue = redisTemplate.opsForValue().get("stringValue");
         System.out.println("修改过后的值:" + newStringValue);
     }
 
@@ -133,6 +181,9 @@ public class ZsetTypeRedisTemplate {
     @RequestMapping("/append")
     public void redisAppend() {
         Integer append1 = redisTemplate.opsForValue().append("StringKey1", "append");
+        Integer append1_1 = redisTemplateString.opsForValue().append("StringKey1_1", "append");
+        Integer append1_student = redisTemplateStudent.opsForValue().append("StringKey1_student", "append");
+        System.out.println(append1 + "," + append1_1 + "," + append1_student);
     }
 
     /**
@@ -188,7 +239,7 @@ public class ZsetTypeRedisTemplate {
      * increment(K key, Long dalta)顺序递增/递减，第二个参数为Long类型，正数则递增，负数则递减。返回递增/递减后的值
      * increment(K key, double delta)
      * value是数字类型，字符串类型没法增一
-     * 有redisTemplate和stringRedisTemplate两种模板，redisTemplate模板使用时应为默认使用了JDK的序列化会在递增/低贱的过程中出现问题，stringRedisTemplate不会
+     * 有redisTemplate和stringRedisTemplate两种模板，redisTemplate模板使用时应为默认使用了JDK的序列化会在递增/递减的过程中出现问题，stringRedisTemplate不会
      *
      * @param
      * @return void
@@ -198,10 +249,11 @@ public class ZsetTypeRedisTemplate {
      */
     @RequestMapping("/increment")
     public void redisCounter() {
-        BoundValueOperations stringKey = redisTemplate.boundValueOps("StringKey");
+        BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey");
         Object beforeValue = stringKey.get();
 //        stringKey.increment(3L);// 异常（第一次可以，进行初始化，第二次增加的时候就会出错），java.io.EOFException: null
-        Long stringKey1 = incr("StringKey", 3L);// 返回递增/递减后的值
+        // 返回递增/递减后的值
+        Long stringKey1 = incr("StringKey", 3L);
         Object o = stringKey.get();
         System.out.println(beforeValue + "" + o);
     }
@@ -211,7 +263,7 @@ public class ZsetTypeRedisTemplate {
      * 如果第一次的时候，redis中没有key会初始化数据为delta值，第二次的时候，在原来的delta值上再加上delta的值
      * <p>
      * RedisTemplate源码中，其默认的序列化器为JdkSerializationRedisSerializer，在序列化器进行序列化的时候，将key对应的value序列化为了字符串。使用的jdk对象序列化，序列化后的值有类信息、版本号等，所以是一个包含很多字母的字符串，所以根本无法加1。
-     * GenericJackson2JsonRedisSerializer、Jackson2JsonRedisSerializer，在序列化器进行序列化的时候，是先将对象转为json，然后再保存到redis，所以，1在redis中是字符串1，所以无法进行加1。
+     * GenericJackson2JsonRedisSerializer、Jackson2JsonRedisSerializer，
      * GenericToStringSerializer、StringRedisSerializer，将字符串的值直接转为字节数组，所以保存到redis中是数字，所以可以进行加1
      *
      * @param key
@@ -240,16 +292,18 @@ public class ZsetTypeRedisTemplate {
      */
     public void redisSetGetBit() {
         redisTemplate.opsForValue().setBit("stringValue", 1, false);
-        String newStringValue = (String) redisTemplate.opsForValue().get("stringValue1");
+        String newStringValue = redisTemplate.opsForValue().get("stringValue1");
         System.out.println("通过setBit(K key,long offset,boolean value)方法修改过后的值:" + newStringValue);
 
-        boolean bitBoolean = redisTemplate.opsForValue().getBit("stringValue1", 1);
+        Boolean bitBoolean = redisTemplate.opsForValue().getBit("stringValue1", 1);
         System.out.println("通过getBit(K key,long offset)方法判断指定bit位的值是:" + bitBoolean);
     }
 
     /**
      * 批量操作
-     * add(Set<TypedTuple<V>> var1) 向集合中插入多个元素,并设置分数
+     * multiSet(Map<? extends K,? extends V> map) 设置map集合到redis。实际是新增了多个k-v数据到redis,是redis.set的一个批量操作
+     * multiGet(Collection<K> keys) 根据集合取出对应的value值。是redis.get()的一个批量操作
+     * multiSetIfAbsent(Map<? extends K,? extends V> map) 判断map是否存在，不存在则新增数据
      *
      * @param
      * @return void
@@ -259,8 +313,30 @@ public class ZsetTypeRedisTemplate {
      */
     @RequestMapping("/muliti")
     public void redisMuliti() {
-        DefaultTypedTuple<String> p1 = new DefaultTypedTuple<>("zSetVaule1", 2.1D);
-        DefaultTypedTuple<String> p2 = new DefaultTypedTuple<>("zSetVaule2", 3.3D);
-        redisTemplate.boundZSetOps("zSetKey").add(new HashSet<>(Arrays.asList(p1,p2)));
+        Map<String, String> valueMap = new HashMap<>();
+        valueMap.put("valueMap1", "map1");
+        valueMap.put("valueMap2", "map2");
+        valueMap.put("valueMap3", "map3");
+        redisTemplate.opsForValue().multiSet(valueMap);
+
+        //根据List集合取出对应的value值（list中的值是map的key）
+        List<String> paraList = new ArrayList<>();
+        paraList.add("valueMap1");
+        paraList.add("valueMap2");
+        paraList.add("valueMap3");
+        paraList.add("valueMap4");
+        List<String> valueList = redisTemplate.opsForValue().multiGet(paraList);
+        for (String value : valueList) {
+            System.out.println("通过multiGet(Collection<K> keys)方法获取map值:" + value);
+        }
+
+        // 判断map是否存在【只要有一个key在，就返回false，不对没有存在的数据做操作】，不存在则设置新值
+        Map<String, String> valueMap1 = new HashMap<>();
+        valueMap1.put("valueMap1", "map1");
+        valueMap1.put("valueMap2", "map2");
+        valueMap1.put("valueMap3", "map3");
+        valueMap1.put("valueMap4", "map4");
+        Boolean aBoolean = redisTemplate.opsForValue().multiSetIfAbsent(valueMap1);
+        System.out.println("指定的key是否不存在：" + aBoolean);
     }
 }
