@@ -1,4 +1,4 @@
-package com.example.redisson;
+package com.example.redisson.zset_type;
 
 import org.redisson.api.RFuture;
 import org.redisson.api.RScoredSortedSet;

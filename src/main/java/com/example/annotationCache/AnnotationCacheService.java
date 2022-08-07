@@ -1,6 +1,7 @@
-package com.example;
+package com.example.annotationCache;
 
 import com.alibaba.fastjson.JSONObject;
+import com.example.dao.StudentDao;
 import com.example.domain.Student;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 功能注释
+ * springBoot 使用Redis实现缓存注解的使用
  *
  * @author zhangdj
  * @version 1.0.0
@@ -22,7 +23,7 @@ import java.util.Optional;
  */
 @Transactional
 @Service
-public class ReImpl {
+public class AnnotationCacheService {
 
     @Resource
     private StudentDao studentDao;
@@ -33,24 +34,23 @@ public class ReImpl {
         return byId.orElse(null);
     }
 
-
     @Cacheable(value = "cache:customer", unless = "null == #result", key = "#id")
     public Student cacheOne2(Integer id) {
         final Optional<Student> byId = studentDao.findById(id);
         return byId.orElse(null);
     }
 
-    // todo 自定义redis缓存的key,
     @Cacheable(value = "cache:customer", unless = "null == #result", key = "#root.methodName + '.' + #id")
     public Student cacheOne3(Integer id) {
         final Optional<Student> byId = studentDao.findById(id);
         return byId.orElse(null);
     }
 
-    // todo 这里缓存到redis，还有响应页面是String（加了很多转义符\,），不是Json格式
+    // 这里缓存到redis，还有响应页面是String（加了很多转义符\,），不是Json格式
     @Cacheable(value = "cache:customer", unless = "null == #result", key = "#root.methodName + '.' + #id")
     public String cacheOne4(Integer id) {
         final Optional<Student> byId = studentDao.findById(id);
+        // 对结果做处理
         return byId.map(JSONObject::toJSONString).orElse(null);
     }
 
@@ -79,15 +79,12 @@ public class ReImpl {
 
     @Cacheable(value = "cache:all")
     public List<Student> cacheList() {
-        List<Student> all = studentDao.findAll();
-        return all;
+        return studentDao.findAll();
     }
 
-    // todo 先查询缓存，再校验是否一致，然后更新操作，比较实用，要清楚缓存的数据格式（明确业务和缓存模型数据）
+    // 先查询缓存，再校验是否一致，然后更新操作，比较实用，要清楚缓存的数据格式（明确业务和缓存模型数据）
     @CachePut(value = "cache:all", unless = "null == #result", key = "#root.methodName")
     public List<Student> cacheList2() {
-        List<Student> all = studentDao.findAll();
-        return all;
+        return studentDao.findAll();
     }
-
 }

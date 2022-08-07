@@ -286,7 +286,7 @@ RedisTemplate 是基于某个具体实现的再封装，比如说 springBoot1.x 
     ```
 
 
-Redis 缓存注解的使用
+## 五. Redis 缓存注解的使用
 + Cache 缓存接口，定义缓存的操作。实现有：RedisCache，EhCacheCache，ConcurrentMapCache
 + CacheManager  缓存管理器，管理各种缓存组件
 + @Cacheable      主要针对方法配置，能根据方法的请求参数对其返回结果进行缓存
@@ -295,14 +295,77 @@ Redis 缓存注解的使用
 + @EnableCaching  开启基于注解的缓存
 + @CacheConfig    同意配置类的缓存注解属性
 + keyGenerator    缓存数据是，key的生成策略
-+ serialize       缓存数据时，value的序列化策略
++ serialize       缓存数据时，value的序列化策略  
+详细见 有道云笔记p6 Redis缓存注解
 
-@Cacheable @CachePut @CacheEvict 三个注解的主要参数
-value   缓存的名称，在spring配置文件中定义，必须指定至少一个。例如：@Cacheable(value = "cache:customer")。只有这一个参数时，可以省略 value=
-key     缓存的key，
+## 六. spring-data-redis连接池
 
+连接池使用原因：  
+   + 在某些业务场景中使用了redis作为分布式缓存，在做业务活动的时候，比如秒杀活动，会一时间涌入大量的流量，这个时候和redis server进行网络连接的话就比较耗费资源和时间，直接影响接口的响应时间。  
 
-## 4. 分布式锁 Redisson
+针对这种某一时刻的突发性流量，使用连接池是比较合适的。  
+ps:spring-boot-starter-redis默认是不使用连接池的
+### 6.1 连接池
++ SpringBoot 1.x 默认采用 Jedis 作为 redis 客户端连接池
++ SpringBoot 2.x spring-data-redis 默认采用 Lettuce 作为 redis 客户端驱动连接池
+
+从 spring-boot-starter-redis 1.4.7.RELEASE是默认使用jedis连接池的最后一个版本
+
+在 springboot1.4.7 之前的版本配置客户端连接池如下：
+```yaml
+spring:
+  redis:
+    pool:
+      maxActive: 5000
+      maxIdle: 30
+      minIdle: 5
+      max-wait: 2000
+```
+在1.4.7之后同时支持了jedis和lettuce两种连接池，配置方式也有点不同：
+```yaml
+spring:
+  redis:
+    jedis:        # jedis连接池配置
+      pool:
+        maxActive: 5000				#最大连接数量
+        maxIdle: 30					#最大闲置数量
+        minIdle: 5					#最小闲置数量
+        max-wait: 2000				#从连接池中获取连接的最大等待时间
+
+    lettuce:      # lettuce链接配置
+      pool:
+        maxActive: 5000					#最大连接数
+        maxIdle: 30						#连接池最大空闲连接数.
+        minIdle: 5						#连接池最小空闲连接数.
+        max-wait: 2000					#从连接池中获取连接时的最大等待时间
+        time-between-eviction-runs: 60s	#空闲对象逐出器线程的运行间隔时间.空闲连接线程释放周期时间.
+```
+### 6.2 Lettuce连接池的问题
+SpringBoot2.x开始默认使用的Redis客户端由Jedis变成了Lettuce，但是当Redis集群中某个节点挂掉之后，Lettuce将无法继续操作Redis，原因在于此时Lettuce使用的仍然是有问题的连接信息。
+
+Lettuce支持redis 集群拓扑动态刷新，但是默认并没有开启，SpringBoot在集成Lettuce时默认也没有开启。并且在SpringBoot2.3.0之前，是没有配置项设置Lettuce自动刷新拓扑的。
+解决方案：
+
+升级到SpringBoot2.3.0或以上版本。并添加如下配置项
+```yaml
+spring:
+  redis:
+    lettuce:
+      cluster:
+        refresh:
+          adaptive: true		#拓扑动态感应即客户端能够根据 redis cluster 集群的变化，动态改变客户端的节点情况，完成故障转移。
+          period: 60s			#刷新redis集群状态周期时间
+    timeout: 60s				#连接redis的最大等待时间
+```
+在使用lettuce连接池时，创建连接工厂时依赖了commons-pool2,记得引入依赖
+```xml
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-pool2</artifactId>
+</dependency>
+```
+
+## 六. 分布式锁 Redisson
 https://github.com/redisson/redisson/wiki/Redisson%E9%A1%B9%E7%9B%AE%E4%BB%8B%E7%BB%8D
 Redis分布式锁的本质：  
     Redis获取分布式锁，其实就是向N个Redis实例中使用SETNX来对该resource设置键值。  
@@ -324,7 +387,7 @@ Redis分布式锁的本质：
 4. 但是这样有一个问题，如果逻辑执行到中间出现异常，可能导致del指令没有被调用，这样就会陷入死锁，锁永远无法释放
 5. 为了解决死锁问题，我们拿到锁时可以加上一个expire过期时间，这样即使出现异常，当到达过期时间也会自动释放锁
 6. 这样又有一个问题，setnx和expire是两条指令而不是原子指令，如果两条指令之间进程挂掉依然会出现死锁
-7. 为了治理上面乱象，在redis 2.8中加入了set指令的扩展参数，使setnx和expire指令可以一起执行
+7. 为了治理上面乱象，在redis 2.8中加入了set指令的扩展参数，使 setnx 和expire指令可以一起执行
 
 + 一个客户端如果要获得锁，必须经过下面的五个步骤
 1. 获取当前 Unix 时间，以毫秒为单位。
