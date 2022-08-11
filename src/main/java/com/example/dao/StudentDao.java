@@ -1,6 +1,7 @@
 package com.example.dao;
 
 import com.example.domain.Student;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import java.util.Optional;
  * @createdAt 2022/8/3 16:22
  * @updatedAt 2022/8/3 16:22
  */
+@Repository
 public class StudentDao {
 
     public Optional<Student> findById(Integer id) {

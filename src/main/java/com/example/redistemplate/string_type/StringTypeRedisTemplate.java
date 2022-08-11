@@ -46,7 +46,25 @@ public class StringTypeRedisTemplate {
      */
     @Resource
     RedisTemplate<String, Student> redisTemplateStudent;
+    @Autowired
+    ValueOperations<String, String> valueOperations;
 
+    @RequestMapping("/stringIncrement")
+    public Long stringIncrement() {
+        // 第一次 初始化成1
+        Long asd = valueOperations.increment("asd");
+        // 在第一次的基础上+1
+        System.out.println(asd);
+        Long asd1 = valueOperations.increment("asd");
+        System.out.println(asd1);
+        // 在第二次的基础上 +2
+        Long asd2 = valueOperations.increment("asd", 2);
+        System.out.println(asd2);
+        // 在第三次的基础上 +2
+        Long asd3 = valueOperations.increment("asd", 2);
+        System.out.println(asd3);
+        return asd3;
+    }
     /**
      * 操作redis中的字符串类型的数据的三种方式
      * set(K key, V value)新增一个字符串类型的值,key是键，value是值。
@@ -65,7 +83,7 @@ public class StringTypeRedisTemplate {
         redisTemplate.boundValueOps("StringKey1").set("StringValue");
         redisTemplateString.opsForValue().set("StringKey1_1", "StringValue1_1");
         Student student = new Student();
-        student.setId(1l);
+        student.setId(1L);
         student.setName("张三");
         student.setAddress("北京");
         student.setAge(18);

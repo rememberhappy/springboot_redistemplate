@@ -244,13 +244,19 @@ RedisTemplate 是基于某个具体实现的再封装，比如说 springBoot1.x 
 
 + StringRedisTemplate 在使用中报错的问题：
    ```text
-       遇到的报错【springboot版本2.3.3.RELEASE的时候报错，升级到版本2.4.5就不会报错了。报错解决办法 pom.xml 中加 commons-pool2 包】
+       遇到的报错【springboot版本2.3.3.RELEASE的时候报错：报错解决办法 pom.xml 中加 commons-pool2 包】
        Caused by: java.lang.ClassNotFoundException: org.apache.commons.pool2.impl.GenericObjectPoolConfig
            at java.net.URLClassLoader.findClass(URLClassLoader.java:381) ~[na:1.8.0_181]
            at java.lang.ClassLoader.loadClass(ClassLoader.java:424) ~[na:1.8.0_181]
            at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:349) ~[na:1.8.0_181]
            at java.lang.ClassLoader.loadClass(ClassLoader.java:357) ~[na:1.8.0_181]
            ... 60 common frames omitted
+       
+       <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>2.11.1</version>
+        </dependency>
    ```
 
 ## 4. RedisTemplate 和 StringRedisTemplate 两者的关系

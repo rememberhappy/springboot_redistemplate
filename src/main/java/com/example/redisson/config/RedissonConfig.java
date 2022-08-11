@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * @Author zhangdj
  * @Date 2021/6/10:15:34
  */
+//@Log4j2(topic = "RedissonConfig")
 @Configuration
 @ConditionalOnClass({RedisAutoConfiguration.class})
 public class RedissonConfig {
