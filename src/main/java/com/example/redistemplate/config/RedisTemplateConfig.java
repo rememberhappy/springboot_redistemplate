@@ -119,6 +119,7 @@ public class RedisTemplateConfig extends CachingConfigurerSupport {
     /**
      * 字符串类型的 顺序递增(increment)/递减(decrement)中出现的问题【异常（第一次可以，进行初始化，第二次增加的时候就会出错），java.io.EOFException: null】。两种解决方案
      * 方案一：
+     * 使用当前对象
      * 和 redisTemplate 中的序列化有关。需要替换 redisTemplate 中的默认序列化器
      * 如果第一次的时候，redis 中没有 key 会初始化数据为 delta 值，第二次的时候，在原来的 delta 值上再加上 delta 的值
      * 原理讲解：
