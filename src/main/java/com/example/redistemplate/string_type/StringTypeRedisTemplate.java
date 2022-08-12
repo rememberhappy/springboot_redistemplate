@@ -27,22 +27,23 @@ public class StringTypeRedisTemplate {
     @Autowired
     RedisTemplate<String, String> redisTemplate;
     /**
-    1. 建议使用泛型此种方式，在使用中就不会涉及到类型的强制转换。
-    2. 指定泛型的时候使用@Resource注解。【当配置了redisConfig后，什么注解都能使用】
-    @Autowired 默认按照类型装配的。也就是说，想要获取RedisTemplate< String, Object>的Bean，要根据名字装配。那么自然想到使用@Resource，它默认按照名字装配
+     * 1. 建议使用泛型此种方式，在使用中就不会涉及到类型的强制转换。
+     * 2. 指定泛型的时候使用@Resource注解。【当配置了redisConfig后，什么注解都能使用】
+     *
+     * @Autowired 默认按照类型装配的。也就是说，想要获取RedisTemplate< String, Object>的Bean，要根据名字装配。那么自然想到使用@Resource，它默认按照名字装配
      */
     @Resource
     RedisTemplate<String, String> redisTemplateString;
     /**
-    redis 自动导入时，泛型只能有两种
-        1：RedisTemplate<Object, Object>
-        2：StringRedisTemplate extends RedisTemplate<String, String>
-    如果项目中使用的泛型不是这两种，可以在导入的时候不指明泛型，否则自动导入会报错:
-        Description:
-        A component required a bean of type 'org.springframework.data.redis.core.RedisTemplate' that could not be found.
-        Action:
-        Consider defining a bean of type 'org.springframework.data.redis.core.RedisTemplate' in your configuration.
-    可以改为不使用泛型的redisTemplate或者是重新配置【如果针对自动配置类型添加自己的Bean，它将取代默认的】
+     * redis 自动导入时，泛型只能有两种
+     * 1：RedisTemplate<Object, Object>
+     * 2：StringRedisTemplate extends RedisTemplate<String, String>
+     * 如果项目中使用的泛型不是这两种，可以在导入的时候不指明泛型，否则自动导入会报错:
+     * Description:
+     * A component required a bean of type 'org.springframework.data.redis.core.RedisTemplate' that could not be found.
+     * Action:
+     * Consider defining a bean of type 'org.springframework.data.redis.core.RedisTemplate' in your configuration.
+     * 可以改为不使用泛型的redisTemplate或者是重新配置【如果针对自动配置类型添加自己的Bean，它将取代默认的】
      */
     @Resource
     RedisTemplate<String, Student> redisTemplateStudent;
@@ -65,6 +66,7 @@ public class StringTypeRedisTemplate {
         System.out.println(asd3);
         return asd3;
     }
+
     /**
      * 操作redis中的字符串类型的数据的三种方式
      * set(K key, V value)新增一个字符串类型的值,key是键，value是值。
@@ -127,8 +129,8 @@ public class StringTypeRedisTemplate {
         String s1 = redisTemplateString.boundValueOps("StringKey1_1").get();
         Student student1 = redisTemplateStudent.boundValueOps("StringKey1_student").get();
         System.out.println(str1 + "," + s1 + "," + student1.toString());
-        String stringKey1_student = redisTemplateString.boundValueOps("StringKey1_student").get();
-        System.out.println(stringKey1_student);
+        String stringKey1Student = redisTemplateString.boundValueOps("StringKey1_student").get();
+        System.out.println(stringKey1Student);
 
         //2、通过BoundValueOperations获取值
         BoundValueOperations<String, String> stringKey = redisTemplate.boundValueOps("StringKey");
@@ -155,14 +157,14 @@ public class StringTypeRedisTemplate {
      * @date 2021/5/20 13:49
      */
     public void redisSetIfAbsent() {
-        boolean absentBoolean = redisTemplate.opsForValue().setIfAbsent("absentValue", "fff");
+        Boolean absentBoolean = redisTemplate.opsForValue().setIfAbsent("absentValue", "fff");
         System.out.println("通过setIfAbsent(K key, V value)方法判断变量值absentValue是否不存在:" + absentBoolean);
-        if (absentBoolean) {
+        if (absentBoolean != null && absentBoolean) {
             String absentValue = redisTemplate.opsForValue().get("absentValue") + "";
             System.out.print(",不存在，则新增后的值是:" + absentValue);
-            boolean existBoolean = redisTemplate.opsForValue().setIfAbsent("absentValue", "eee");
+            Boolean existBoolean = redisTemplate.opsForValue().setIfAbsent("absentValue", "eee");
             System.out.print(",再次调用setIfAbsent(K key, V value)判断absentValue是否不存在并重新赋值:" + existBoolean);
-            if (!existBoolean) {
+            if (existBoolean != null && !existBoolean) {
                 absentValue = redisTemplate.opsForValue().get("absentValue") + "";
                 System.out.print("如果存在,则重新赋值后的absentValue变量的值是:" + absentValue);
             }
@@ -199,9 +201,9 @@ public class StringTypeRedisTemplate {
     @RequestMapping("/append")
     public void redisAppend() {
         Integer append1 = redisTemplate.opsForValue().append("StringKey1", "append");
-        Integer append1_1 = redisTemplateString.opsForValue().append("StringKey1_1", "append");
-        Integer append1_student = redisTemplateStudent.opsForValue().append("StringKey1_student", "append");
-        System.out.println(append1 + "," + append1_1 + "," + append1_student);
+        Integer append11 = redisTemplateString.opsForValue().append("StringKey1_1", "append");
+        Integer append1Student = redisTemplateStudent.opsForValue().append("StringKey1_student", "append");
+        System.out.println(append1 + "," + append11 + "," + append1Student);
     }
 
     /**
