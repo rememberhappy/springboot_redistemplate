@@ -120,26 +120,26 @@ public class RedissonLock {
      * @Author zhangdj
      * @date 2021/6/10 20:20
      */
-    private void useTheLockWatchDog() throws InterruptedException {
+    private void lockWatchDog() throws InterruptedException {
         //1. 普通的可重入锁
         RLock lock = redissonClient.getLock("generalLock");
 
-        // 拿锁失败时会不停的重试
-        // 具有Watch Dog 自动延期机制 默认续30s 每隔30/3=10 秒续到30s
+        // 拿锁失败时会不停的重试，重试一定次数或者时间后进入到阻塞状态。待这个锁被占有的线程释放后，唤醒 进行抢占
+        // 具有 Watch Dog（看门狗） 自动延期机制 默认续30s 每隔30/3=10 秒续到30s
         // 加锁得业务只要运行完成，就不会给当前锁续期，即使不手动解锁，锁默认在30s后自动删除
         lock.lock();
 
         // 拿锁失败时会不停的重试
-        // 没有Watch Dog ，10s后自动释放
+        // 没有 Watch Dog ，10s后自动释放
         // 在锁时间到了以后，不会自动续期,没有Watch Dog
         lock.lock(10, TimeUnit.SECONDS);
 
         // 尝试拿锁10s后停止重试,返回false
-        // 具有Watch Dog 自动延期机制 默认续30s
+        // 具有 Watch Dog 自动延期机制 默认续30s
         boolean res1 = lock.tryLock(10, TimeUnit.SECONDS);
 
         // 尝试拿锁100s后停止重试,返回false
-        // 没有Watch Dog ，10s后自动释放
+        // 没有 Watch Dog ，10s后自动释放
         boolean res2 = lock.tryLock(100, 10, TimeUnit.SECONDS);
 
         //2. 公平锁 保证 Redisson 客户端线程将以其请求的顺序获得锁
