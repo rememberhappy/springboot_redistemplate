@@ -1,5 +1,6 @@
 package com.example.utils;
 
+import com.alibaba.fastjson.JSONArray;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
@@ -13,6 +14,8 @@ import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +29,7 @@ import java.util.regex.Pattern;
  */
 @Component
 public class RedisUtil<T> {
+
     @Resource
     private RedisTemplate<String, T> redisTemplate;
     @Autowired
@@ -93,16 +97,12 @@ public class RedisUtil<T> {
      * @author Jesson
      * @date 2018/8/27 10:12
      */
-    public Boolean hasKey(String key) {
+    public boolean hasKey(String key) {
         if (StringUtils.isBlank(key)) {
             throw new RuntimeException("key 不能为空");
         }
-        try {
-            return redisTemplate.hasKey(key);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        Boolean b = redisTemplate.hasKey(key);
+        return b != null && b;
     }
 
     /**
@@ -154,7 +154,6 @@ public class RedisUtil<T> {
             e.printStackTrace();
             return false;
         }
-
     }
 
     /**
@@ -710,159 +709,86 @@ public class RedisUtil<T> {
         }
     }
 
-/** 组合使用 */
+    // ===============================组合使用=================================
 
     /**
-     * 功能描述：通过key值模糊查询匹配带key的map集合
-     *
-     * @param decode 是否编码（true-Base64,false-解码Base64）
-     * @return Map<String, Object>
-     * @Author Jesson
-     * @Param key
-     * @Param flag true-取 与的值  false-取 或的值
-     * @Date 2018/8/31 10:16
+     * @param prefix
+     * @param id
+     * @param fun
+     * @return T
+     * @Throws
+     * @Author zhangdj
+     * @date 2022/12/29 18:13
      */
-    public Map<String, Object> likeMap(Map<String, T> map, Boolean isAnd, Boolean decode, String... keys) throws IOException {
-        Map<String, Object> resultMap = new HashMap<>();
-        if (keys.length > 0 && !map.isEmpty()) {
-            if (isAnd) {
-                for (Map.Entry<String, T> entry : map.entrySet()) {
-                    for (int i = 0; i < keys.length; i++) {
-                        /**忽略大小写判断*/
-                        Pattern pattern = Pattern.compile(keys[i], Pattern.CASE_INSENSITIVE);
-                        Matcher matcher = pattern.matcher(entry.getKey());
-                        if (!matcher.find()) {
-                            break;
-                        } else if (keys.length - 1 == i) {
-                            if (decode) {
-                                resultMap.put(entry.getKey(), entry.getValue());
-                            } else {
-                                resultMap.put(entry.getKey(), decoder(entry.getValue().toString()));
-                            }
-
-                        }
-                    }
-                }
-            } else {
-                for (String key : keys) {
-                    for (Map.Entry<String, T> entry : map.entrySet()) {
-                        /**忽略大小写判断*/
-                        Pattern pattern = Pattern.compile(key, Pattern.CASE_INSENSITIVE);
-                        Matcher matcher = pattern.matcher(entry.getKey());
-                        if (matcher.find()) {
-                            if (decode) {
-                                resultMap.put(entry.getKey(), entry.getValue());
-                            } else {
-                                resultMap.put(entry.getKey(), decoder(entry.getValue().toString()));
-                            }
-                        }
-                    }
-                }
-            }
+    public T getAndSetById(String prefix, Long id, Function<Long, T> fun) {
+        String key = String.format(prefix, id);
+        T result = redisTemplate.opsForValue().get(key);
+        if (null == result) {
+            T t = fun.apply(id);
+            redisTemplate.opsForValue().set(key, t);
+            return t;
         }
-        return resultMap;
+        return result;
     }
 
-    /**
-     * 功能描述：获取模糊匹配的map集合
-     *
-     * @param flag true-取 与的值  false-取 或的值
-     * @return
-     * @author Jesson
-     * @Date 2018/9/7 10:26
-     */
-    public Map<String, T> likeMap(Map<String, T> map, Boolean flag, String... keys) {
-        Map<String, T> resultMap = new HashMap<>(keys.length);
-        if (keys.length > 0 && !map.isEmpty()) {
-            if (flag) {
-                for (Map.Entry<String, T> entry : map.entrySet()) {
-                    for (int i = 0; i < keys.length; i++) {
-                        /**忽略大小写判断*/
-                        Pattern pattern = Pattern.compile(keys[i], Pattern.CASE_INSENSITIVE);
-                        Matcher matcher = pattern.matcher(entry.getKey());
-                        if (!matcher.find()) {
-                            break;
-                        } else if (keys.length - 1 == i) {
-                            resultMap.put(entry.getKey(), entry.getValue());
-                        }
-                    }
-                }
-            } else {
-                for (String key : keys) {
-                    for (Map.Entry<String, T> entry : map.entrySet()) {
-                        /**忽略大小写判断*/
-                        Pattern pattern = Pattern.compile(key, Pattern.CASE_INSENSITIVE);
-                        Matcher matcher = pattern.matcher(entry.getKey());
-                        if (matcher.find()) {
-                            resultMap.put(entry.getKey(), entry.getValue());
-                        }
-                    }
-                }
-            }
+    // 获取集合
+    public List<T> getIdList(String key, Supplier<List<T>> supplier) {
+        if (!hasKey(key)) {
+            List<T> list = supplier.get();
+            redisTemplate.opsForSet().add(key, list.toArray());
+            return list;
         }
-        return resultMap;
+        Object o = stringRedisTemplate.opsForValue().get(key);
+        return o == Lists.newArrayList() ? null : JSONArray.parseArray((String) o, Long.class);
     }
 
     /**
      * 功能描述：查询结果集
      *
      * @param key     键值
-     * @param type    文件类型（pack，unpack，template，Exception等）
      * @param txnCode 交易码
      * @param decode  是否编码（true-Base64,false-解码Base64）
      * @return
      * @author Jesson
      * @Date 2018/8/31 16:34
      */
-    public Map<String, T> hashGet(String key, Boolean decode, String type, String txnCode) {
+    public Map<String, T> hashGet(String key, Boolean decode, String txnCode) throws IOException {
         Map<String, T> keyMap = hashGet(key);
         if (!keyMap.isEmpty()) {
-            return likeMap(keyMap, true, type, txnCode);
+            return likeMap(keyMap, decode, txnCode);
         } else {
             return null;
         }
     }
 
     /**
-     * 功能描述：在前缀筛选结果集中获取目标结果集
-     *
-     * @param args 为 "且" 关系
-     * @return
-     * @author Jesson
-     * @Date 2018/9/4 16:47
+     * @param map    源，要取数据的对象
+     * @param decode 是否编码（true-Base64,false-解码Base64）
+     * @param keys   匹配的KEY
+     * @return java.util.Map<java.lang.String, T>
+     * @Throws
+     * @Author zhangdj
+     * @date 2022/12/29 18:06
      */
-    public Set<String> getKeySet(String condition, String... args) {
-        Set<String> resultSet = new HashSet<>();
-        if (!condition.isEmpty()) {
-            Set<String> set = getKeys(condition);
-            if (set.size() > 0) {
-                if (args.length > 0) {
-                    for (String rs : set) {
-                        for (int i = 0; i < args.length; i++) {
-                            /**忽略大小写判断*/
-                            Pattern pattern = Pattern.compile(args[i], Pattern.CASE_INSENSITIVE);
-                            Matcher matcher = pattern.matcher(rs);
-                            if (!matcher.find()) {
-                                break;
-                            } else if (args.length - 1 == i) {
-                                resultSet.add(rs);
-                            }
+    public Map<String, T> likeMap(Map<String, T> map, boolean decode, String... keys) throws IOException {
+        Map<String, T> resultMap = new HashMap<>();
+        if (keys.length > 0 && !map.isEmpty()) {
+            for (String key : keys) {
+                for (Map.Entry<String, T> entry : map.entrySet()) {
+                    // 忽略大小写判断
+                    Pattern pattern = Pattern.compile(key, Pattern.CASE_INSENSITIVE);
+                    Matcher matcher = pattern.matcher(entry.getKey());
+                    if (matcher.find()) {
+                        if (decode) {
+                            resultMap.put(entry.getKey(), entry.getValue());
+                        } else {
+                            resultMap.put(entry.getKey(), (T) decoder(entry.getValue().toString()));
                         }
                     }
-                } else {
-                    return set;
                 }
             }
         }
-        return resultSet;
-    }
-
-    public void setRedisTemplate(RedisTemplate<String, T> redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
-
-    public RedisTemplate<String, T> getRedisTemplate() {
-        return redisTemplate;
+        return resultMap;
     }
 
     private byte[] decoder(String endcoderStr) throws IOException {

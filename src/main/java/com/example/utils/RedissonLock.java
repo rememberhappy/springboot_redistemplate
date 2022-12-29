@@ -84,6 +84,7 @@ public class RedissonLock {
      */
     public void unlock(String lockName) {
         RLock rLock = redissonClient.getLock(lockName);
+        // 判断是不是当前线程获取的锁
         if (rLock.isHeldByCurrentThread()) {
             rLock.unlock();
         }
