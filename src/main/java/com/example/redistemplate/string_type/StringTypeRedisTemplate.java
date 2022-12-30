@@ -320,7 +320,7 @@ public class StringTypeRedisTemplate {
     }
 
     /**
-     * 批量操作
+     * 批量操作。在集群环境下，会根据key值进行计算槽索引值。如果key中计入{xx}，redis集群会优先根据{xx}字符串为依据，计算槽索引号，可以保证操作的数据在同一槽索引上
      * multiSet(Map<? extends K,? extends V> map) 设置map集合到redis。实际是新增了多个k-v数据到redis,是redis.set的一个批量操作
      * multiGet(Collection<K> keys) 根据集合取出对应的value值。是redis.get()的一个批量操作
      * multiSetIfAbsent(Map<? extends K,? extends V> map) 判断map是否存在，不存在则新增数据
