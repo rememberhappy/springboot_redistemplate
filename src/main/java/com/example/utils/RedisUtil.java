@@ -51,7 +51,7 @@ public class RedisUtil<T> {
      *
      * @param
      * @return
-     * @author Jesson
+     * @author zhangdj
      * @Date 2018/9/7 16:05
      */
     public Set<String> getKeys(String pattern) {
@@ -63,7 +63,7 @@ public class RedisUtil<T> {
      *
      * @param key
      * @return
-     * @author Jesson
+     * @author zhangdj
      * @date 2018/8/27 10:04
      */
     public Boolean expire(String key, long time) {
@@ -86,7 +86,7 @@ public class RedisUtil<T> {
      *
      * @param key 键，不能为null
      * @return 时间（s) 返回0 代表永久有效
-     * @author Jesson
+     * @author zhangdj
      * @date 2018/8/27 10:10
      */
     public Long getExpire(String key) {
@@ -101,7 +101,7 @@ public class RedisUtil<T> {
      *
      * @param key 键
      * @return true 存在 false不存在
-     * @author Jesson
+     * @author zhangdj
      * @date 2018/8/27 10:12
      */
     public boolean hasKey(String key) {
@@ -723,6 +723,7 @@ public class RedisUtil<T> {
 
     /**
      * 根据 prefix+suffix 组成的key获取缓存，如果不存在，将 fun 执行的结果缓存
+     * 使用示例：.getAndSetById("a_key", id, super::findById)
      *
      * @param prefix key前缀
      * @param suffix key后缀
@@ -744,6 +745,7 @@ public class RedisUtil<T> {
 
     /**
      * 根据 prefix+suffix 组成的key获取缓存，如果不存在，将 fun 执行的结果缓存
+     * 使用示例：.getAndSetById("a_key", "asd", this::findByStr)
      *
      * @param prefix key前缀
      * @param suffix key后缀
@@ -765,6 +767,10 @@ public class RedisUtil<T> {
 
     /**
      * 获取ID集合。如果key不存在，将 supplier 函数执行的结果缓存并返回
+     * 使用示例：.getIdList("a_key", () -> {
+     * List<TaskItem> itemsTmp = findByCondition(new TaskItem(taskIds));
+     * return itemsTmp == null ? null : itemsTmp.stream().map(TaskItem::getId).collect(Collectors.toList());
+     * })
      *
      * @param key      key对应的ID集合
      * @param supplier 函数
@@ -788,6 +794,7 @@ public class RedisUtil<T> {
 
     /**
      * 根据ids获取缓存对象
+     * 使用示例：.getObjByIds("a_key", idList, this::findById)
      *
      * @param prefix key前缀
      * @param ids    对象的ids
@@ -818,6 +825,12 @@ public class RedisUtil<T> {
 
     /**
      * 根据 key前缀+ID列表 获取对象集合。此处使用到了两个缓存，第一个缓存是 key->id集合。根据第一个缓存的ID集合和key的前缀来获取存对象数据的缓存
+     * 使用示例：.getObjByConditionKey("key","prefix",() -> {
+     * TaskAssignConfig query = new TaskAssignConfig();
+     * query.setTaskIds(taskIds);
+     * List<TaskAssignConfig> assignConfigs = findByCondition(query);
+     * return assignConfigs == null ? null : assignConfigs.stream().map(TaskAssignConfig::getId).collect(Collectors.toList());
+     * }, this::findById);
      *
      * @param key                    第一个缓存的key。value对应的是 ID集合
      * @param prefix                 第二个缓存的key前缀
@@ -957,8 +970,7 @@ public class RedisUtil<T> {
      * @param key     键值
      * @param txnCode 交易码
      * @param decode  是否编码（true-Base64,false-解码Base64）
-     * @return
-     * @author Jesson
+     * @author zhangdj
      * @Date 2018/8/31 16:34
      */
     public Map<String, T> hashGet(String key, Boolean decode, String txnCode) throws IOException {
@@ -975,7 +987,6 @@ public class RedisUtil<T> {
      * @param decode 是否编码（true-Base64,false-解码Base64）
      * @param keys   匹配的KEY
      * @return java.util.Map<java.lang.String, T>
-     * @Throws
      * @Author zhangdj
      * @date 2022/12/29 18:06
      */
@@ -1000,6 +1011,7 @@ public class RedisUtil<T> {
         return resultMap;
     }
 
+    // base64编码
     private byte[] decoder(String endcoderStr) throws IOException {
         BASE64Decoder decoder = new BASE64Decoder();
         return decoder.decodeBuffer(endcoderStr);
