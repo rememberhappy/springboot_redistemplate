@@ -1,13 +1,17 @@
 package com.example.utils;
 
 import com.alibaba.fastjson.JSONArray;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import sun.misc.BASE64Decoder;
 
 import javax.annotation.Resource;
@@ -18,6 +22,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Redis工具类
@@ -29,6 +34,8 @@ import java.util.regex.Pattern;
  */
 @Component
 public class RedisUtil<T> {
+    private static final Logger log = LoggerFactory.getLogger("RedisUtil");
+
 
     @Resource
     private RedisTemplate<String, T> redisTemplate;
@@ -40,7 +47,7 @@ public class RedisUtil<T> {
     // =============================common============================
 
     /**
-     * 功能描述：获取所有键值
+     * 获取所有键值
      *
      * @param
      * @return
@@ -52,7 +59,7 @@ public class RedisUtil<T> {
     }
 
     /**
-     * 功能描述：指定缓存失效时间
+     * 指定缓存失效时间
      *
      * @param key
      * @return
@@ -75,7 +82,7 @@ public class RedisUtil<T> {
     }
 
     /**
-     * 功能描述：根据key 获取过期时间
+     * 根据key 获取过期时间
      *
      * @param key 键，不能为null
      * @return 时间（s) 返回0 代表永久有效
@@ -90,7 +97,7 @@ public class RedisUtil<T> {
     }
 
     /**
-     * 功能描述：判断key是否存在
+     * 判断key是否存在
      *
      * @param key 键
      * @return true 存在 false不存在
@@ -106,17 +113,20 @@ public class RedisUtil<T> {
     }
 
     /**
-     * 功能描述：删除缓存
+     * 删除缓存
      *
      * @param key 可为多个
      * @return
      */
     public void del(String... key) {
         if (key != null && key.length > 0) {
+            Boolean result;
             if (key.length == 1) {
-                redisTemplate.delete(key[0]);
+                result = redisTemplate.delete(key[0]);
+                log.debug("del debug: key={},result={}", key[0], result);
             } else {
-                redisTemplate.delete(CollectionUtils.arrayToList(key));
+                Long delete = redisTemplate.delete(Arrays.asList(key));
+                log.debug("del debug: keyList={},id={},result={}", key, delete == key.length);
             }
         }
     }
@@ -712,38 +722,237 @@ public class RedisUtil<T> {
     // ===============================组合使用=================================
 
     /**
-     * @param prefix
-     * @param id
-     * @param fun
-     * @return T
-     * @Throws
+     * 根据 prefix+suffix 组成的key获取缓存，如果不存在，将 fun 执行的结果缓存
+     *
+     * @param prefix key前缀
+     * @param suffix key后缀
+     * @param fun    函数
+     * @return T 返回值
      * @Author zhangdj
      * @date 2022/12/29 18:13
      */
-    public T getAndSetById(String prefix, Long id, Function<Long, T> fun) {
-        String key = String.format(prefix, id);
+    public T getAndSetById(String prefix, Long suffix, Function<Long, T> fun) {
+        String key = prefix + suffix;
         T result = redisTemplate.opsForValue().get(key);
         if (null == result) {
-            T t = fun.apply(id);
+            T t = fun.apply(suffix);
             redisTemplate.opsForValue().set(key, t);
             return t;
         }
         return result;
     }
 
-    // 获取集合
-    public List<T> getIdList(String key, Supplier<List<T>> supplier) {
-        if (!hasKey(key)) {
-            List<T> list = supplier.get();
-            redisTemplate.opsForSet().add(key, list.toArray());
-            return list;
+    /**
+     * 根据 prefix+suffix 组成的key获取缓存，如果不存在，将 fun 执行的结果缓存
+     *
+     * @param prefix key前缀
+     * @param suffix key后缀
+     * @param fun    函数
+     * @return T 返回值
+     * @Author zhangdj
+     * @date 2022/12/29 18:13
+     */
+    public T getAndSetById(String prefix, String suffix, Function<String, T> fun) {
+        String key = prefix + suffix;
+        T result = redisTemplate.opsForValue().get(key);
+        if (null == result) {
+            T t = fun.apply(suffix);
+            redisTemplate.opsForValue().set(key, t);
+            return t;
         }
-        Object o = stringRedisTemplate.opsForValue().get(key);
-        return o == Lists.newArrayList() ? null : JSONArray.parseArray((String) o, Long.class);
+        return result;
     }
 
     /**
-     * 功能描述：查询结果集
+     * 获取ID集合。如果key不存在，将 supplier 函数执行的结果缓存并返回
+     *
+     * @param key      key对应的ID集合
+     * @param supplier 函数
+     * @return java.util.List<java.lang.Long>
+     * @Author zhangdj
+     * @date 2022/12/30 14:31
+     */
+    public List<Long> getIdList(String key, Supplier<List<Long>> supplier) {
+        String idListStr = stringRedisTemplate.opsForValue().get(key);
+        List<Long> idList;
+        if (StringUtils.isBlank(idListStr)) {
+            idList = supplier.get();
+            if (CollectionUtils.isNotEmpty(idList)) {
+                stringRedisTemplate.opsForSet().add(key, StringUtils.join(idList, ","));
+            }
+        } else {
+            idList = Arrays.stream(idListStr.split(",")).map(item -> Long.parseLong(item.trim())).collect(Collectors.toList());
+        }
+        return idList;
+    }
+
+    /**
+     * 根据ids获取缓存对象
+     *
+     * @param prefix key前缀
+     * @param ids    对象的ids
+     * @param fun    函数，当对应的ID不存在时，调用此函数获取对象
+     * @return java.util.List<T> 返回的结果
+     * @Author zhangdj
+     * @date 2022/12/30 15:18
+     */
+    public List<T> getObjByIds(String prefix, List<Long> ids, Function<Long, T> fun) {
+        if (CollectionUtils.isEmpty(ids)) {
+            throw new RuntimeException("ids must not be empty");
+        }
+        List<String> keys = ids.stream().map(l -> prefix + l).collect(Collectors.toList());
+        // 根据keys批量查询，结果和keys的顺序是一样的。
+        List<T> list = redisTemplate.opsForValue().multiGet(keys);
+        T t;
+        for (int i = 0; i < ids.size(); i++) {
+            t = list.get(i);
+            if (null == t) {
+                // 调用函数，传入参数：ID。t：fun函数的结果
+                t = fun.apply(ids.get(i));
+                redisTemplate.opsForValue().set(keys.get(i), t);
+            }
+            list.add(t);
+        }
+        return list;
+    }
+
+    /**
+     * 根据 key前缀+ID列表 获取对象集合。此处使用到了两个缓存，第一个缓存是 key->id集合。根据第一个缓存的ID集合和key的前缀来获取存对象数据的缓存
+     *
+     * @param key                    第一个缓存的key。value对应的是 ID集合
+     * @param prefix                 第二个缓存的key前缀
+     * @param conditionQuerySupplier 第一个缓存在key为空的情况下获取ID集合的函数
+     * @param dataFun                第二个缓存的获取对象数据的函数
+     * @return java.util.List<T> 返回集合数据
+     * @Author zhangdj
+     * @date 2022/12/30 15:24
+     */
+    public List<T> getObjByConditionKey(String key, String prefix, Supplier<List<Long>> conditionQuerySupplier, Function<Long, T> dataFun) {
+        // 根据key获取此key对应的ID集合。如果ID不存在，调用conditionQuerySupplier函数
+        List<Long> idList = getIdList(key, conditionQuerySupplier);
+        if (CollectionUtils.isEmpty(idList)) {
+            return Collections.emptyList();
+        }
+        // 根据 key前缀 + ID列表 获取对象数据
+        return getObjByIds(prefix, idList, dataFun);
+    }
+
+    /**
+     * 根据前缀删除数据
+     *
+     * @param prefix key前缀
+     * @Author zhangdj
+     * @date 2022/12/30 15:46
+     */
+    public void batchDel(String prefix) {
+        Set<String> keys = redisTemplate.keys(prefix + "*");
+        if (CollectionUtils.isNotEmpty(keys)) {
+            del(keys.toArray(new String[0]));
+        }
+    }
+
+    /**
+     * 根据前缀+id删除单个数据
+     *
+     * @param prefix key前缀
+     * @param id     id
+     * @Author zhangdj
+     * @date 2022/12/30 15:48
+     */
+    public void batchDel(String prefix, Long id) {
+        if (StringUtils.isNotBlank(prefix) || id != null) {
+            Boolean delete = redisTemplate.delete(prefix + id);
+            log.debug("del debug: prefix={},id={},result={}", prefix, id, delete);
+        }
+    }
+
+    /**
+     * 根据key前缀+id列表删除指定的数据
+     *
+     * @param prefix key前缀
+     * @param ids    要删除的ids
+     * @Author zhangdj
+     * @date 2022/12/30 15:49
+     */
+    public void batchDel(String prefix, List<Long> ids) {
+        if (StringUtils.isNotBlank(prefix) || CollectionUtils.isNotEmpty(ids)) {
+            Set<String> set = ids.parallelStream().map(i -> prefix + i).collect(Collectors.toSet());
+            redisTemplate.delete(set);
+        }
+    }
+
+    /**
+     * 组合删除
+     * 1. 删除 prefix+* 模糊key的数据
+     * 2. 删除 dataKey+id列表 的数据
+     *
+     * @param prefix  1删除的key前缀
+     * @param dataKey 2删除的key前缀
+     * @param ids     2删除的指定的ID列表
+     * @Author zhangdj
+     * @date 2022/12/30 16:16
+     */
+    public void batchDel(String prefix, String dataKey, List<Long> ids) {
+        if (StringUtils.isNotBlank(prefix) || CollectionUtils.isNotEmpty(ids)) {
+            batchDel(prefix, dataKey, null, ids);
+        }
+    }
+
+    /**
+     * 组合删除
+     * 1. 删除 prefix+* 模糊key的数据
+     * 2. 删除 dataKey+id 的单个数据
+     *
+     * @param prefix  1删除的key前缀
+     * @param dataKey 2删除的key前缀
+     * @param id      2删除的指定的id
+     * @Author zhangdj
+     * @date 2022/12/30 15:55
+     */
+    public void batchDel(String prefix, String dataKey, Long id) {
+        if (StringUtils.isNotBlank(prefix) || id != null) {
+            batchDel(prefix, dataKey, id, null);
+        }
+    }
+
+    /**
+     * 组合删除
+     * 1. 删除 prefix+* 模糊key的数据
+     * 2. 删除 dataKey+id 的单个数据
+     * 3. 删除 dataKey+id列表 的数据
+     *
+     * @param prefix  1删除的key前缀
+     * @param dataKey 2,3删除的key前缀
+     * @param id      2删除的指定的id
+     * @param ids     3删除的指定的ID列表
+     * @Author zhangdj
+     * @date 2022/12/30 15:55
+     */
+    public void batchDel(String prefix, String dataKey, Long id, List<Long> ids) {
+        try {
+            StringRedisSerializer serializer = new StringRedisSerializer();
+            // 根据前缀 查询所有的key
+            Set<String> keys = redisTemplate.keys(prefix + "*");
+            // redis的管道命令，允许client将多个请求依次发给服务器，过程中而不需要等待请求的回复，在最后再一并读取结果即可,可以改善性能.
+            redisTemplate.executePipelined(((RedisCallback<?>) conn -> {
+                if (CollectionUtils.isNotEmpty(keys)) {
+                    keys.forEach(k -> conn.del(serializer.serialize(k)));
+                }
+                if (id != null) {
+                    conn.del(serializer.serialize(dataKey + id));
+                }
+                if (CollectionUtils.isNotEmpty(ids)) {
+                    ids.forEach(i -> conn.del(serializer.serialize(dataKey + i)));
+                }
+                return null;
+            }));
+        } catch (Exception e) {
+            log.error("batchDel error: prefixKey={},dataKey={},ids={},exception={}", prefix, dataKey, JSONArray.toJSONString(ids), e);
+        }
+    }
+
+    /**
+     * 查询结果集
      *
      * @param key     键值
      * @param txnCode 交易码

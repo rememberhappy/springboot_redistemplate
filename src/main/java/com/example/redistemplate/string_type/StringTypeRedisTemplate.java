@@ -334,17 +334,19 @@ public class StringTypeRedisTemplate {
     @RequestMapping("/muliti")
     public void redisMuliti() {
         Map<String, String> valueMap = new HashMap<>();
-        valueMap.put("valueMap1", "map1");
-        valueMap.put("valueMap2", "map2");
-        valueMap.put("valueMap3", "map3");
+        valueMap.put("{valueMap}1", "map1");
+        valueMap.put("{valueMap}2", "map2");
+        valueMap.put("{valueMap}3", "map3");
         redisTemplate.opsForValue().multiSet(valueMap);
 
         //根据List集合取出对应的value值（list中的值是map的key）
         List<String> paraList = new ArrayList<>();
-        paraList.add("valueMap1");
-        paraList.add("valueMap2");
-        paraList.add("valueMap3");
-        paraList.add("valueMap4");
+        paraList.add("{valueMap}1");
+        paraList.add("{valueMap}2");
+        paraList.add("{valueMap}3");
+        paraList.add("{valueMap}15");
+        paraList.add("{valueMap}56");
+        paraList.add("{valueMap}4");
         List<String> valueList = redisTemplate.opsForValue().multiGet(paraList);
         for (String value : valueList) {
             System.out.println("通过multiGet(Collection<K> keys)方法获取map值:" + value);
@@ -352,10 +354,10 @@ public class StringTypeRedisTemplate {
 
         // 判断map是否存在【只要有一个key在，就返回false，不对没有存在的数据做操作】，不存在则设置新值
         Map<String, String> valueMap1 = new HashMap<>();
-        valueMap1.put("valueMap1", "map1");
-        valueMap1.put("valueMap2", "map2");
-        valueMap1.put("valueMap3", "map3");
-        valueMap1.put("valueMap4", "map4");
+        valueMap1.put("{valueMap}1", "map1");
+        valueMap1.put("{valueMap}2", "map2");
+        valueMap1.put("{valueMap}3", "map3");
+        valueMap1.put("{valueMap}4", "map4");
         Boolean aBoolean = redisTemplate.opsForValue().multiSetIfAbsent(valueMap1);
         System.out.println("指定的key是否不存在：" + aBoolean);
     }
